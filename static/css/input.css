@@ -1,0 +1,18 @@
+/* Tailwind v4 entrypoint (CSS-first; no tailwind.config.js, no npm).
+   Built to static/css/app.css by the standalone CLI: see `make tailwind`. */
+@import "tailwindcss";
+
+/* Where to scan for class names. Classes live in .templ files, in the generated
+   *_templ.go, and in component style helpers (plain .go) — so scan both.
+   Paths are relative to this file (static/css/). */
+@source "../../internal/**/*.templ";
+@source "../../internal/**/*.go";
+
+/* Class-based dark mode: the theme-toggle island sets `.dark` on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Project design tokens go here, e.g.:
+     --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+     --color-brand-500: oklch(0.62 0.19 260); */
+}

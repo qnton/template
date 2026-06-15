@@ -1,0 +1,39 @@
+package component
+
+// InputProps configures TextInput. Error, when set, renders a field-level message.
+type InputProps struct {
+	ID          string
+	Name        string
+	Label       string
+	Type        string
+	Value       string
+	Placeholder string
+	Error       string
+	Required    bool
+	MaxLength   int
+}
+
+templ TextInput(p InputProps) {
+	<div class="space-y-1">
+		if p.Label != "" {
+			<label for={ p.ID } class="block text-sm font-medium">{ p.Label }</label>
+		}
+		<input
+			type={ orDefault(p.Type, "text") }
+			id={ p.ID }
+			name={ p.Name }
+			value={ p.Value }
+			placeholder={ p.Placeholder }
+			if p.Required {
+				required
+			}
+			if p.MaxLength > 0 {
+				maxlength={ attrInt(p.MaxLength) }
+			}
+			class={ inputClasses }
+		/>
+		if p.Error != "" {
+			<p class="text-sm text-red-600 dark:text-red-400">{ p.Error }</p>
+		}
+	</div>
+}

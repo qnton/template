@@ -1,0 +1,29 @@
+version: 2
+
+# Updates arrive as PRs for MANUAL review — no auto-merge. Review the changelog,
+# let CI run, and merge deliberately (supply-chain discipline).
+updates:
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "go"]
+    commit-message:
+      prefix: "gomod"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "actions"
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "docker"

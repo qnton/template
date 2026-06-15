@@ -1,0 +1,25 @@
+# Local secrets / env — never commit
+.env
+.env.*
+!.env.example
+
+# Compiled output
+/server
+/bin/
+*.exe
+*.test
+*.out
+coverage.*
+
+# Local dev / live-reload scratch
+/tmp/
+.DS_Store
+
+# Tool binaries fetched locally (Tailwind standalone, etc.)
+/.tools/
+
+# IMPORTANT: generated artifacts are COMMITTED so the Docker image build stays
+# fully offline. Do NOT ignore them:
+#   *_templ.go              (templ generate)
+#   internal/**/queries.sql.go, models.go, db.go, copyfrom.go (sqlc generate)
+#   static/css/app.css      (tailwind build)

@@ -1,0 +1,6 @@
+package component
+
+// Alert renders an inline message. kind is "info" (default), "success" or "error".
+templ Alert(kind string, message string) {
+	<div class={ alertClasses(kind) } role="alert">{ message }</div>
+}

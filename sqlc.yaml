@@ -1,0 +1,29 @@
+# sqlc is a BUILD tool, not a runtime dependency. It generates type-safe Go from
+# plain SQL — every query is parameterized by design (no SQL injection) with no
+# reflection overhead at runtime.
+#
+# Convention: ONE query set per feature, generated into that feature's `store`
+# subpackage (kept separate from handwritten handlers/views, and avoiding a name
+# clash with the feature's own New constructor). The schema is shared — the
+# migrations/ dir is the single source of truth.
+#
+# To add a feature's queries: copy a `sql:` entry below, point `queries`/`out` at
+# internal/feature/<name>/, keep `package: store`.
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "migrations"
+    queries: "internal/feature/example/queries.sql"
+    gen:
+      go:
+        package: "store"
+        out: "internal/feature/example/store"
+        sql_package: "pgx/v5"
+        emit_interface: true       # per-feature Querier interface (swappable seam)
+        emit_empty_slices: true    # list queries return [] not nil
+        emit_json_tags: false
+        emit_prepared_queries: false
+        overrides:
+          # Map Postgres timestamptz to time.Time so views format dates directly.
+          - db_type: "timestamptz"
+            go_type: "time.Time"

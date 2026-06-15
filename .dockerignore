@@ -1,0 +1,24 @@
+# Keep the build context lean and the image build hermetic.
+# The image build needs ONLY: go.* , vendor/, source, embed.go, static/.
+.git
+.github
+.gitignore
+.dockerignore
+
+# Docs & local-only files
+*.md
+LICENSE
+docker-compose.yml
+.env
+.env.*
+!.env.example
+
+# Local dev / tooling scratch
+/tmp/
+/bin/
+/.tools/
+.DS_Store
+/server
+
+# Tests are not needed to build the binary
+**/*_test.go

@@ -1,0 +1,17 @@
+package component
+
+// ButtonProps configures Button. Variant is "primary" (default), "secondary" or
+// "danger"; Class appends extra utility classes; Type defaults to "button"; Attrs
+// passes through arbitrary attributes (e.g. hx-* for HTMX actions).
+type ButtonProps struct {
+	Type    string
+	Variant string
+	Class   string
+	Attrs   templ.Attributes
+}
+
+templ Button(p ButtonProps) {
+	<button type={ orDefault(p.Type, "button") } class={ buttonClasses(p.Variant), p.Class } { p.Attrs... }>
+		{ children... }
+	</button>
+}

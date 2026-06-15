@@ -1,0 +1,15 @@
+package component
+
+// ThemeToggle renders the button the "theme-toggle" JS island mounts onto. The
+// island is activated solely by the data-island attribute — no inline handler —
+// so the strict, no-unsafe-inline CSP stays intact.
+templ ThemeToggle() {
+	<button
+		type="button"
+		data-island="theme-toggle"
+		aria-label="Toggle color theme"
+		class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+	>
+		<span data-theme-icon aria-hidden="true">◐</span>
+	</button>
+}

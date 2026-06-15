@@ -1,0 +1,94 @@
+package example
+
+import (
+	"strconv"
+
+	"github.com/example/app/internal/core/assets"
+	"github.com/example/app/internal/feature/example/store"
+	"github.com/example/app/internal/view/component"
+	"github.com/example/app/internal/view/layout"
+)
+
+// Page is the full HTML document for the feature's index.
+templ Page(a *assets.Manager, items []store.Item) {
+	@layout.Base(a, "Example · App") {
+		<div class="space-y-8">
+			<div>
+				<h1 class="text-2xl font-bold tracking-tight">Example feature</h1>
+				<p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+					A removable reference slice: list, create and delete over HTMX, with CSRF and sqlc.
+				</p>
+			</div>
+			@Panel(items, "", "")
+		</div>
+	}
+}
+
+// Panel is the HTMX-swappable region (create form + list). Handlers re-render the
+// whole panel so the UI is always consistent after a create or delete.
+templ Panel(items []store.Item, formTitle string, formErr string) {
+	<div id="panel" class="space-y-6">
+		<section class="space-y-2">
+			<h2 class="text-base font-semibold">Add an item</h2>
+			@createForm(formTitle, formErr)
+		</section>
+		<section class="space-y-2">
+			<h2 class="text-base font-semibold">Items</h2>
+			@itemList(items)
+		</section>
+	</div>
+}
+
+templ createForm(title string, errMsg string) {
+	<form hx-post="/items" hx-target="#panel" hx-swap="outerHTML" class="flex items-start gap-2">
+		<div class="flex-1">
+			@component.TextInput(component.InputProps{
+				ID:          "title-input",
+				Name:        "title",
+				Value:       title,
+				Placeholder: "New item title…",
+				Error:       errMsg,
+				Required:    true,
+				MaxLength:   200,
+			})
+		</div>
+		@component.Button(component.ButtonProps{Type: "submit", Variant: "primary"}) {
+			Add
+		}
+	</form>
+}
+
+templ itemList(items []store.Item) {
+	if len(items) == 0 {
+		<p class="rounded-md border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700">
+			No items yet — add one above.
+		</p>
+	} else {
+		<ul class="divide-y divide-slate-200 rounded-md border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+			for _, it := range items {
+				@itemRow(it)
+			}
+		</ul>
+	}
+}
+
+templ itemRow(it store.Item) {
+	<li class="flex items-center justify-between gap-4 px-4 py-3">
+		<div class="min-w-0">
+			<p class="truncate text-sm font-medium">{ it.Title }</p>
+			<p class="text-xs text-slate-500">{ it.CreatedAt.Format("2006-01-02 15:04") }</p>
+		</div>
+		@component.Button(component.ButtonProps{
+			Variant: "danger",
+			Class:   "shrink-0",
+			Attrs: templ.Attributes{
+				"hx-delete":  "/items/" + strconv.FormatInt(it.ID, 10),
+				"hx-target":  "#panel",
+				"hx-swap":    "outerHTML",
+				"hx-confirm": "Delete this item?",
+			},
+		}) {
+			Delete
+		}
+	</li>
+}

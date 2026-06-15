@@ -1,0 +1,7 @@
+# Pinned third-party JS libraries live here, one directory per lib+version, e.g.
+# vendor/somelib@1.2.3/. Commit them, record SHA-256 in vendor/CHECKSUMS.txt, and
+# load with an integrity= (SRI) attribute. NEVER load third-party JS from a CDN.
+#
+# This template ships no vendored third-party island libs by default (the example
+# theme-toggle island is native-only). HTMX is the one vendored library and lives
+# at static/js/htmx.min.js; its checksum is recorded in CHECKSUMS.txt.

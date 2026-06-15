@@ -1,0 +1,8 @@
+# SHA-256 checksums of vendored/pinned frontend assets, in `shasum -c` format.
+# Paths are relative to static/js/. Verify offline with:
+#     cd static/js && shasum -a 256 -c vendor/CHECKSUMS.txt
+# (`make verify-assets` does this for you.)
+#
+# htmx 2.0.9 — https://github.com/bigskysoftware/htmx/releases/tag/v2.0.9
+# SRI (for reference / CDN use): sha384-ESlCao+z/oasnu2Uc/5K1LQTI7YCF2KKO4xakCPQCFuiHhCh8Oa/R5NwHY6guZ3m
+57d9191515339922bd1356d7b2d80b1ee3b29f1b3a2c65a078bb8b2e8fd9ae5f  htmx.min.js

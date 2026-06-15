@@ -1,0 +1,88 @@
+name: app
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    ports:
+      # Host port is configurable to avoid clashes with other local Postgres.
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    # PostgreSQL's entrypoint drops to the postgres user and fixes data-dir perms,
+    # so it needs these few capabilities; everything else is dropped.
+    cap_add: ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"]
+
+  # One-shot migration runner (goose). Uses the tools image.
+  migrate:
+    build:
+      context: .
+      target: tools
+    command: ["goose", "-dir", "migrations", "postgres", "${DATABASE_URL:-postgres://app:app@db:5432/app?sslmode=disable}", "up"]
+    working_dir: /src
+    volumes:
+      - ./migrations:/src/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    security_opt: ["no-new-privileges:true"]
+
+  app:
+    build:
+      context: .
+      target: final
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_ADDR: ":8080"
+      DATABASE_URL: ${DATABASE_URL:-postgres://app:app@db:5432/app?sslmode=disable}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "/server", "-healthcheck"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+  # Dev/codegen/test environment for Docker-only workflows. Not started by
+  # `docker compose up` (it's behind a profile). Use:
+  #   docker compose run --rm tools make generate
+  #   docker compose run --rm tools make test
+  tools:
+    build:
+      context: .
+      target: tools
+    working_dir: /src
+    volumes:
+      - .:/src
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/app?sslmode=disable
+      TEST_DATABASE_URL: postgres://app:app@db:5432/app?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["tools"]
+
+volumes:
+  pgdata:
