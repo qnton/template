@@ -1,0 +1,40 @@
+# golangci-lint configuration (schema v2). Run with `make lint`.
+#
+# This COMPLEMENTS the `vet` target (go vet + gofmt), which stays in `make check`.
+# `lint` is intentionally NOT part of `make check`: the hermetic Docker-only path
+# (`docker compose run --rm tools make check`) stays lint-binary-light, and lint
+# findings are advisory triage rather than a hard pre-commit gate. Run it
+# explicitly (`make lint`) or rely on the CI `lint` job.
+#
+# The linter binary is pinned in the Dockerfile tools stage (GOLANGCI_VERSION) and
+# the CI workflow (env.GOLANGCI_VERSION) — keep those two in sync.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # `standard` = errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+  enable:
+    - gosec      # security-focused static analysis — the reason this set is security-leaning
+    - bodyclose  # HTTP/response bodies must be closed (leak guard)
+    - unconvert  # flags redundant type conversions
+  settings:
+    gosec:
+      excludes:
+        # G115: int→int32 conversions of small, operator-set config values are
+        # safe here; G115 is the noisiest gosec rule and would fire on every such
+        # conversion. Real overflow risks are caught by review, not this rule.
+        - G115
+        # G124: the CSRF and session cookies set Secure conditionally (prod only,
+        # since local dev is plain HTTP) but are otherwise fully hardened
+        # (HttpOnly, SameSite=Lax, __Host- prefix) and covered by tests.
+        - G124
+  exclusions:
+    # Don't lint machine-generated code; we don't own its style or its findings.
+    generated: lax
+    paths:
+      - ".*_templ\\.go$"               # templ-generated views
+      - "internal/feature/[^/]+/store" # sqlc-generated stores
+      - "vendor"

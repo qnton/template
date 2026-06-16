@@ -6,6 +6,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"net/netip"
 	"os"
 	"strconv"
@@ -28,6 +29,8 @@ type Config struct {
 	Env  string // "development" | "production"
 	Addr string // public listen address, e.g. ":8080"
 
+	LogLevel slog.Level // minimum slog level: debug | info | warn | error
+
 	DatabaseURL string
 
 	// pgxpool tuning.
@@ -45,6 +48,9 @@ type Config struct {
 	ShutdownTimeout   time.Duration
 
 	MaxRequestBytes int64
+
+	// Readiness probe (/readyz) database-ping deadline.
+	HealthCheckTimeout time.Duration
 
 	// App-level rate limit (defense-in-depth; primary limiting is the CF edge).
 	RateLimitEnabled bool
@@ -72,6 +78,7 @@ func Load() (*Config, error) {
 	c := &Config{
 		Env:                 l.str("APP_ENV", "development"),
 		Addr:                l.str("APP_ADDR", ":8080"),
+		LogLevel:            l.level("LOG_LEVEL", slog.LevelInfo),
 		DatabaseURL:         l.str("DATABASE_URL", "postgres://app:app@localhost:5432/app?sslmode=disable"),
 		DBMaxConns:          int32(l.intVal("DB_MAX_CONNS", 10)),
 		DBMinConns:          int32(l.intVal("DB_MIN_CONNS", 2)),
@@ -84,6 +91,7 @@ func Load() (*Config, error) {
 		IdleTimeout:         l.dur("IDLE_TIMEOUT", 120*time.Second),
 		ShutdownTimeout:     l.dur("SHUTDOWN_TIMEOUT", 15*time.Second),
 		MaxRequestBytes:     l.int64Val("MAX_REQUEST_BYTES", 1<<20),
+		HealthCheckTimeout:  l.dur("HEALTHCHECK_TIMEOUT", 2*time.Second),
 		RateLimitEnabled:    l.boolVal("RATE_LIMIT_ENABLED", true),
 		RateLimitRPS:        l.floatVal("RATE_LIMIT_RPS", 20),
 		RateLimitBurst:      l.intVal("RATE_LIMIT_BURST", 40),
@@ -169,6 +177,20 @@ func (l *loader) boolVal(key string, def bool) bool {
 		return def
 	}
 	return b
+}
+
+func (l *loader) level(key string, def slog.Level) slog.Level {
+	v, ok := lookup(key)
+	if !ok {
+		return def
+	}
+	var lvl slog.Level
+	// slog.Level.UnmarshalText is case-insensitive and accepts debug|info|warn|error.
+	if err := lvl.UnmarshalText([]byte(v)); err != nil {
+		l.errs = append(l.errs, fmt.Errorf("%s=%q: not a log level (debug|info|warn|error)", key, v))
+		return def
+	}
+	return lvl
 }
 
 func (l *loader) dur(key string, def time.Duration) time.Duration {

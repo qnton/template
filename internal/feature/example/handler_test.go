@@ -2,6 +2,7 @@ package example
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -21,6 +22,7 @@ type fakeStore struct {
 	items     []store.Item
 	createErr error
 	listErr   error
+	deleteErr error
 }
 
 var _ store.Querier = (*fakeStore)(nil)
@@ -45,6 +47,9 @@ func (f *fakeStore) CreateItem(_ context.Context, title string) (store.Item, err
 }
 
 func (f *fakeStore) DeleteItem(_ context.Context, id int64) error {
+	if f.deleteErr != nil {
+		return f.deleteErr
+	}
 	out := f.items[:0]
 	for _, it := range f.items {
 		if it.ID != id {
@@ -160,6 +165,98 @@ func TestDeleteRemovesItem(t *testing.T) {
 	}
 	if len(f.items) != 1 || f.items[0].ID != 2 {
 		t.Fatalf("item 1 not deleted: %+v", f.items)
+	}
+}
+
+func TestIndexStoreErrorReturns500(t *testing.T) {
+	_, mux := newTestModule(t, &fakeStore{listErr: errors.New("boom")})
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+	if strings.Contains(rec.Body.String(), "boom") {
+		t.Error("internal error message leaked to client")
+	}
+}
+
+func TestCreateStoreErrorReturns500(t *testing.T) {
+	f := &fakeStore{createErr: errors.New("boom")}
+	_, mux := newTestModule(t, f)
+
+	form := url.Values{"title": {"valid title"}}
+	req := httptest.NewRequest(http.MethodPost, "/items", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+}
+
+func TestDeleteStoreErrorReturns500(t *testing.T) {
+	f := &fakeStore{
+		items:     []store.Item{{ID: 1, Title: "a", CreatedAt: time.Now()}},
+		deleteErr: errors.New("boom"),
+	}
+	_, mux := newTestModule(t, f)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/items/1", nil))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+}
+
+func TestDeleteInvalidID(t *testing.T) {
+	_, mux := newTestModule(t, &fakeStore{})
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/items/not-a-number", nil))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+// TestCreateMaxLenBoundary verifies the title length rule counts runes (not
+// bytes), guarding against a future byte-length regression in validate.MaxLen.
+func TestCreateMaxLenBoundary(t *testing.T) {
+	tests := []struct {
+		name        string
+		title       string
+		wantStatus  int
+		wantCreated bool
+	}{
+		{"exactly max ascii", strings.Repeat("a", maxTitleLen), http.StatusOK, true},
+		{"one over max ascii", strings.Repeat("a", maxTitleLen+1), http.StatusUnprocessableEntity, false},
+		{"under max", strings.Repeat("a", maxTitleLen-1), http.StatusOK, true},
+		{"exactly max multibyte runes", strings.Repeat("é", maxTitleLen), http.StatusOK, true},
+		{"one over max multibyte runes", strings.Repeat("é", maxTitleLen+1), http.StatusUnprocessableEntity, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &fakeStore{}
+			_, mux := newTestModule(t, f)
+
+			form := url.Values{"title": {tc.title}}
+			req := httptest.NewRequest(http.MethodPost, "/items", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("status = %d, want %d", rec.Code, tc.wantStatus)
+			}
+			if created := len(f.items) == 1; created != tc.wantCreated {
+				t.Errorf("created = %v, want %v", created, tc.wantCreated)
+			}
+			if !tc.wantCreated && !strings.Contains(rec.Body.String(), "is too long") {
+				t.Errorf("expected 'is too long' message; got %s", rec.Body.String())
+			}
+		})
 	}
 }
 

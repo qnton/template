@@ -1,0 +1,79 @@
+package auth
+
+import (
+	"github.com/example/app/internal/core/assets"
+	"github.com/example/app/internal/core/httpx"
+	"github.com/example/app/internal/feature/auth/store"
+	"github.com/example/app/internal/view/component"
+	"github.com/example/app/internal/view/layout"
+)
+
+// LoginPage renders the sign-in form. Forms are classic POSTs (not HTMX), so they
+// carry the masked CSRF token in a hidden field that the CSRF middleware reads.
+templ LoginPage(a *assets.Manager, email, formErr string) {
+	@layout.Base(a, "Sign in · App") {
+		<div class="mx-auto max-w-sm space-y-6">
+			<h1 class="text-2xl font-bold tracking-tight">Sign in</h1>
+			@authForm("/login", "Sign in", email, formErr)
+			<p class="text-sm text-slate-500 dark:text-slate-400">
+				No account? <a href="/register" class="font-medium underline">Register</a>.
+			</p>
+		</div>
+	}
+}
+
+// RegisterPage renders the account-creation form.
+templ RegisterPage(a *assets.Manager, email, formErr string) {
+	@layout.Base(a, "Register · App") {
+		<div class="mx-auto max-w-sm space-y-6">
+			<h1 class="text-2xl font-bold tracking-tight">Create account</h1>
+			@authForm("/register", "Register", email, formErr)
+			<p class="text-sm text-slate-500 dark:text-slate-400">
+				Already have an account? <a href="/login" class="font-medium underline">Sign in</a>.
+			</p>
+		</div>
+	}
+}
+
+// AccountPage is the demo protected page; it is only reachable via RequireAuth.
+templ AccountPage(a *assets.Manager, user store.User) {
+	@layout.Base(a, "Account · App") {
+		<div class="mx-auto max-w-sm space-y-6">
+			<h1 class="text-2xl font-bold tracking-tight">Your account</h1>
+			<p class="text-sm">Signed in as <span class="font-medium">{ user.Email }</span>.</p>
+			<form method="post" action="/logout">
+				<input type="hidden" name="csrf_token" value={ httpx.CSRFToken(ctx) }/>
+				@component.Button(component.ButtonProps{Type: "submit", Variant: "secondary"}) {
+					Sign out
+				}
+			</form>
+		</div>
+	}
+}
+
+templ authForm(action templ.SafeURL, submit, email, formErr string) {
+	<form method="post" action={ action } class="space-y-4">
+		<input type="hidden" name="csrf_token" value={ httpx.CSRFToken(ctx) }/>
+		if formErr != "" {
+			@component.Alert("error", formErr)
+		}
+		@component.TextInput(component.InputProps{
+			ID:       "email",
+			Name:     "email",
+			Type:     "email",
+			Label:    "Email",
+			Value:    email,
+			Required: true,
+		})
+		@component.TextInput(component.InputProps{
+			ID:       "password",
+			Name:     "password",
+			Type:     "password",
+			Label:    "Password",
+			Required: true,
+		})
+		@component.Button(component.ButtonProps{Type: "submit", Variant: "primary"}) {
+			{ submit }
+		}
+	</form>
+}

@@ -27,3 +27,18 @@ sql:
           # Map Postgres timestamptz to time.Time so views format dates directly.
           - db_type: "timestamptz"
             go_type: "time.Time"
+  - engine: "postgresql"
+    schema: "migrations"
+    queries: "internal/feature/auth/queries.sql"
+    gen:
+      go:
+        package: "store"
+        out: "internal/feature/auth/store"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_empty_slices: true
+        emit_json_tags: false
+        emit_prepared_queries: false
+        overrides:
+          - db_type: "timestamptz"
+            go_type: "time.Time"

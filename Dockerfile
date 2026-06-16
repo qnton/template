@@ -15,6 +15,7 @@ ARG TEMPL_VERSION=v0.3.1020
 ARG SQLC_VERSION=v1.31.1
 ARG GOOSE_VERSION=v3.27.1
 ARG TAILWIND_VERSION=v4.3.1
+ARG GOLANGCI_VERSION=v2.12.2
 
 ###############################################################################
 # tools
@@ -24,6 +25,7 @@ ARG TEMPL_VERSION
 ARG SQLC_VERSION
 ARG GOOSE_VERSION
 ARG TAILWIND_VERSION
+ARG GOLANGCI_VERSION
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends make ca-certificates curl \
@@ -32,7 +34,8 @@ RUN apt-get update \
 RUN go install github.com/a-h/templ/cmd/templ@${TEMPL_VERSION} \
  && go install github.com/sqlc-dev/sqlc/cmd/sqlc@${SQLC_VERSION} \
  && go install github.com/pressly/goose/v3/cmd/goose@${GOOSE_VERSION} \
- && go install golang.org/x/vuln/cmd/govulncheck@latest
+ && go install golang.org/x/vuln/cmd/govulncheck@latest \
+ && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_VERSION}
 
 # Tailwind CSS standalone CLI (no npm/node_modules).
 RUN set -eux; \

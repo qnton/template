@@ -2,7 +2,7 @@
 // logger, the database pool and the asset manager into the Core app, registers
 // the feature slices, and runs the server with graceful shutdown.
 //
-// The -healthcheck subcommand probes /healthz and exits 0/1; it backs the
+// The -healthcheck subcommand probes /readyz and exits 0/1; it backs the
 // container HEALTHCHECK, since the distroless image ships no shell or curl.
 package main
 
@@ -32,7 +32,7 @@ import (
 var version = "dev"
 
 func main() {
-	healthcheck := flag.Bool("healthcheck", false, "probe /healthz and exit 0/1 (for container HEALTHCHECK)")
+	healthcheck := flag.Bool("healthcheck", false, "probe /readyz and exit 0/1 (for container HEALTHCHECK)")
 	flag.Parse()
 
 	if *healthcheck {
@@ -46,14 +46,17 @@ func main() {
 }
 
 func run() error {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	slog.SetDefault(logger)
-	logger.Info("starting", slog.String("version", version))
-
+	// Load config first so the logger can honor LOG_LEVEL. Config errors are
+	// aggregated and surfaced to stderr by main() before any logger exists.
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
+	logger = httpx.WithRequestIDLogging(logger) // every record carries its request_id
+	slog.SetDefault(logger)
+	logger.Info("starting", slog.String("version", version))
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -86,7 +89,7 @@ func run() error {
 	return app.New(deps, registry.Features(deps)...).Run(ctx)
 }
 
-// runHealthcheck performs an HTTP GET against the local /healthz and maps the
+// runHealthcheck performs an HTTP GET against the local /readyz and maps the
 // result to a process exit code. Used by the container HEALTHCHECK.
 func runHealthcheck() int {
 	host, port, err := net.SplitHostPort(envOr("APP_ADDR", ":8080"))
@@ -96,7 +99,7 @@ func runHealthcheck() int {
 	if host == "" || host == "0.0.0.0" || host == "::" {
 		host = "127.0.0.1"
 	}
-	url := "http://" + net.JoinHostPort(host, port) + "/healthz"
+	url := "http://" + net.JoinHostPort(host, port) + "/readyz"
 
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Get(url)
@@ -104,7 +107,7 @@ func runHealthcheck() int {
 		fmt.Fprintln(os.Stderr, "healthcheck:", err)
 		return 1
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		fmt.Fprintln(os.Stderr, "healthcheck: status", resp.StatusCode)
 		return 1

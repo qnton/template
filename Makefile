@@ -12,6 +12,7 @@ SQLC     ?= sqlc
 GOOSE    ?= goose
 TAILWIND ?= tailwindcss
 GOVULN   ?= govulncheck
+GOLANGCI ?= golangci-lint
 
 DATABASE_URL ?= postgres://app:app@localhost:5432/app?sslmode=disable
 VERSION      := $(shell cat TEMPLATE_VERSION 2>/dev/null || echo dev)
@@ -53,13 +54,21 @@ dev: ## Live reload: templ + tailwind watchers + air (install: go install github
 	kill 0
 
 ## ── Quality gates ────────────────────────────────────────────────────────────
-.PHONY: check structure vet test bench vuln verify-assets
+.PHONY: check structure vet fmt lint test bench vuln verify-assets checksums
 check: structure vet test vuln verify-assets ## Run all pre-commit checks
 
 vet: ## go vet + gofmt check (excludes generated files)
 	$(GO) vet ./...
 	@unformatted=$$(gofmt -l . | grep -v '_templ.go' || true); \
 	 if [ -n "$$unformatted" ]; then echo "gofmt needed:"; echo "$$unformatted"; exit 1; fi
+
+fmt: ## Format Go code in place (gofmt -w; skips vendored and generated files)
+	@files=$$(gofmt -l . | grep -v -e '_templ\.go' -e '^vendor/' || true); \
+	 if [ -n "$$files" ]; then echo "$$files" | xargs gofmt -w && echo "formatted:" && echo "$$files"; \
+	 else echo "already formatted"; fi
+
+lint: ## Run golangci-lint (security-leaning set; see .golangci.yml). Not in `check`.
+	$(GOLANGCI) run
 
 structure: ## Validate the strict app/feature structure
 	$(GO) run ./cmd/structurecheck
@@ -73,8 +82,23 @@ bench: ## Run benchmarks
 vuln: ## Scan reachable code for known vulnerabilities
 	$(GOVULN) ./...
 
-verify-assets: ## Verify vendored frontend asset checksums
+verify-assets: ## Verify vendored asset checksums AND that no vendored file is unlisted
 	cd static/js && shasum -a 256 -c vendor/CHECKSUMS.txt
+	@cd static/js && status=0; \
+	 listed=$$(grep -vE '^[[:space:]]*#' vendor/CHECKSUMS.txt | awk 'NF>=2{print $$NF}'); \
+	 for f in $$(find vendor -type f ! -name CHECKSUMS.txt ! -name '.*'); do \
+	   echo "$$listed" | grep -qxF "$$f" || { echo "  unlisted: $$f"; status=1; }; \
+	 done; \
+	 if [ "$$status" -ne 0 ]; then \
+	   echo "ERROR: vendored files missing from vendor/CHECKSUMS.txt — run 'make checksums' and add them"; exit 1; \
+	 fi
+
+checksums: ## Print sha256 + SRI lines for vendored assets (paste into vendor/CHECKSUMS.txt)
+	@cd static/js && for f in htmx.min.js $$(find vendor -type f ! -name CHECKSUMS.txt ! -name '.*' | sort); do \
+	   [ -f "$$f" ] || continue; \
+	   echo "# SRI: sha384-$$(openssl dgst -sha384 -binary "$$f" | openssl base64 -A)"; \
+	   shasum -a 256 "$$f"; \
+	 done
 
 ## ── Database ─────────────────────────────────────────────────────────────────
 .PHONY: migrate migrate-down
