@@ -107,6 +107,26 @@ auto-numbered migration, and the `sqlc.yaml` block). There are matching
 Removing a feature is the inverse: delete the folder + its migration + the one
 registry line, then `make generate && make structure`.
 
+### Optional batteries
+
+Beyond the HTTP/DB/view foundation, `internal/core/` ships small, **stdlib-first,
+opt-in** modules — Laravel's productivity, built the idiomatic Go way (no ORM, no
+facades, no service container). Each is removable and adds no runtime dependency
+beyond pgx:
+
+| Module | What it is | Wiring |
+|---|---|---|
+| `jobs` | Postgres queue (`FOR UPDATE SKIP LOCKED`) + worker, retries | `JOBS_ENABLED`; handlers in `registry.RegisterJobs` |
+| `schedule` | In-process recurring tasks (`Every`) | `SCHEDULER_ENABLED`; tasks in `registry.RegisterSchedule` |
+| `mail` | `Mailer` (net/smtp + log drivers) | `mail.FromEnv()`; `MAIL_*` |
+| `cache` | `Cache` (memory + Postgres) + `Remember` | build on demand |
+| `events` | Synchronous event bus, typed `Listen[T]` | share a `events.New()` |
+| `storage` | Blob store (disk driver; S3 = extension point) | `storage.FromEnv()`; `STORAGE_*` |
+
+`jobs` and `schedule` have runtime loops started in the server bootstrap behind
+their config flags; the rest are libraries a feature constructs from `deps`. See
+[`CLAUDE.md`](CLAUDE.md) §4 for usage snippets.
+
 ### Add a JS island (the pattern)
 
 Islands are small ES modules loaded **only** on pages that ask for them — no

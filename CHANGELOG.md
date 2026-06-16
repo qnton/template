@@ -14,8 +14,10 @@ Breaking changes are marked **BREAKING** and explained in [`UPGRADING.md`](UPGRA
 
 ## [Unreleased]
 
+## [0.3.0]
+
 Roadmap toward "Laravel's productivity, Go's soul" — optional, stdlib-first
-batteries, each removable.
+batteries, each removable, each paired with the conventions/generators from 0.2.0.
 
 ### Added
 - **Background jobs** (`internal/core/jobs`): a Postgres-backed queue
@@ -110,6 +112,7 @@ batteries, each removable.
   scans, Syft SBOM, SHA-pinned GitHub Actions, dependabot (no auto-merge).
 - Docs: `README.md`, `CLAUDE.md` (rules + ownership boundary), `UPGRADING.md`.
 
-[Unreleased]: https://example.com/compare/v0.2.0...HEAD
+[Unreleased]: https://example.com/compare/v0.3.0...HEAD
+[0.3.0]: https://example.com/compare/v0.2.0...v0.3.0
 [0.2.0]: https://example.com/compare/v0.1.0...v0.2.0
 [0.1.0]: https://example.com/releases/tag/v0.1.0
