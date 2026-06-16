@@ -29,6 +29,10 @@ batteries, each removable.
 - **Mail** (`internal/core/mail`): `Mailer` interface with a stdlib `net/smtp`
   driver and a log driver (default). Self-configuring via `mail.FromEnv(logger)` and
   `MAIL_*` env vars; supports text/HTML (multipart/alternative). No runtime dep.
+- **Cache** (`internal/core/cache`): byte-oriented `Cache` interface with an
+  in-process `MemoryCache` (TTL) and a `PostgresCache` (`cache` table), plus a
+  `Remember` helper. Ships `migrations/00004_create_cache.sql`. Unwired; build a
+  driver on demand.
 
 ## [0.2.0]
 

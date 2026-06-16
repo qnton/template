@@ -106,6 +106,10 @@ with a Postgres advisory lock.
 credentials come from `MAIL_*` env (`MAIL_DRIVER=log` default; `smtp` for real
 sending). No central config field, no bootstrap wiring.
 
+**Cache** (`internal/core/cache`): `cache.NewMemory()` (process-local, TTL) or
+`cache.NewPostgres(deps.Pool)` (shared, `cache` table). Both satisfy `cache.Cache`
+(`Get`/`Set`/`Delete`); `cache.Remember(ctx, c, key, ttl, fn)` for compute-and-store.
+
 **Reusable UI:** `internal/view/component/` ships a token-based starter design
 system (`Button`, `Alert`/`AlertBox`, `Badge`, `Card`, `CardLink`, `Stat`,
 `EmptyState`, `Icon` + lucide set, and `Label`/`Field`/`PageHeader`/`Section`/
