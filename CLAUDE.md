@@ -96,6 +96,11 @@ enqueue from a handler with `jobs.New(deps.Pool).Enqueue(ctx, "kind", payload)`;
 register the handler in `internal/feature/registry` `RegisterJobs`. The worker
 (Postgres `FOR UPDATE SKIP LOCKED`, retry/backoff) starts in the server bootstrap.
 
+**Scheduled tasks** (`internal/core/schedule`, optional — set `SCHEDULER_ENABLED=true`):
+register recurring work in `registry.RegisterSchedule` with
+`s.Every("name", interval, fn)`. In-process per replica — guard once-only tasks
+with a Postgres advisory lock.
+
 **Reusable UI:** `internal/view/component/` ships a token-based starter design
 system (`Button`, `Alert`/`AlertBox`, `Badge`, `Card`, `CardLink`, `Stat`,
 `EmptyState`, `Icon` + lucide set, and `Label`/`Field`/`PageHeader`/`Section`/

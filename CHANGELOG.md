@@ -23,6 +23,9 @@ batteries, each removable.
   panic recovery. Optional via `JOBS_ENABLED` (started in the server bootstrap on
   the signal context). Enqueue with `jobs.New(deps.Pool).Enqueue(ctx, kind, payload)`;
   register handlers in `registry.RegisterJobs`. Ships `migrations/00003_create_jobs.sql`.
+- **Scheduler** (`internal/core/schedule`): in-process, stdlib-`time` task
+  scheduler (`Every(name, interval, fn)`) with panic recovery and overlap-skipping.
+  Optional via `SCHEDULER_ENABLED`; register tasks in `registry.RegisterSchedule`.
 
 ## [0.2.0]
 

@@ -7,6 +7,7 @@ package registry
 import (
 	"github.com/example/app/internal/core/app"
 	"github.com/example/app/internal/core/jobs"
+	"github.com/example/app/internal/core/schedule"
 	"github.com/example/app/internal/feature/auth"
 	"github.com/example/app/internal/feature/example"
 )
@@ -30,5 +31,14 @@ func RegisterJobs(deps app.Deps, w *jobs.Worker) {
 	//           return err
 	//       }
 	//       return sendWelcome(ctx, p.UserID)
+	//   })
+}
+
+// RegisterSchedule registers recurring tasks on the scheduler (started only when
+// SCHEDULER_ENABLED=true). Project-owned: add your tasks here.
+func RegisterSchedule(deps app.Deps, s *schedule.Scheduler) {
+	// Example:
+	//   s.Every("prune-sessions", time.Hour, func(ctx context.Context) error {
+	//       return pruneExpiredSessions(ctx, deps.Pool)
 	//   })
 }
