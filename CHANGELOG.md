@@ -14,6 +14,16 @@ Breaking changes are marked **BREAKING** and explained in [`UPGRADING.md`](UPGRA
 
 ## [Unreleased]
 
+Roadmap toward "Laravel's productivity, Go's soul" — optional, stdlib-first
+batteries, each removable.
+
+### Added
+- **Background jobs** (`internal/core/jobs`): a Postgres-backed queue
+  (`SELECT … FOR UPDATE SKIP LOCKED`) + worker with exponential-backoff retries and
+  panic recovery. Optional via `JOBS_ENABLED` (started in the server bootstrap on
+  the signal context). Enqueue with `jobs.New(deps.Pool).Enqueue(ctx, kind, payload)`;
+  register handlers in `registry.RegisterJobs`. Ships `migrations/00003_create_jobs.sql`.
+
 ## [0.2.0]
 
 ### Added

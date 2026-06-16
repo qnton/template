@@ -91,6 +91,11 @@ block (then `make sqlc` materialises `store/`). Doing it by hand, the anatomy is
 2. `make migrate`.
 3. Add the query to the feature's `queries.sql` → `make sqlc` → use via the feature's `store.Querier`.
 
+**Background jobs** (`internal/core/jobs`, optional — set `JOBS_ENABLED=true`):
+enqueue from a handler with `jobs.New(deps.Pool).Enqueue(ctx, "kind", payload)`;
+register the handler in `internal/feature/registry` `RegisterJobs`. The worker
+(Postgres `FOR UPDATE SKIP LOCKED`, retry/backoff) starts in the server bootstrap.
+
 **Reusable UI:** `internal/view/component/` ships a token-based starter design
 system (`Button`, `Alert`/`AlertBox`, `Badge`, `Card`, `CardLink`, `Stat`,
 `EmptyState`, `Icon` + lucide set, and `Label`/`Field`/`PageHeader`/`Section`/

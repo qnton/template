@@ -25,6 +25,7 @@ import (
 	"github.com/example/app/internal/core/config"
 	"github.com/example/app/internal/core/db"
 	"github.com/example/app/internal/core/httpx"
+	"github.com/example/app/internal/core/jobs"
 	"github.com/example/app/internal/feature/registry"
 )
 
@@ -84,6 +85,15 @@ func run() error {
 		Config: cfg,
 		CSRF:   httpx.NewCSRF(cfg.IsProduction()),
 		Assets: assetMgr,
+	}
+
+	// Background jobs worker (optional; see internal/core/jobs). It shares the
+	// signal context, so SIGINT/SIGTERM stops it alongside the server.
+	if cfg.JobsEnabled {
+		worker := jobs.NewWorker(pool, logger, jobs.Options{PollInterval: cfg.JobsPollInterval})
+		registry.RegisterJobs(deps, worker)
+		go worker.Run(ctx)
+		logger.Info("background jobs worker enabled")
 	}
 
 	return app.New(deps, registry.Features(deps)...).Run(ctx)

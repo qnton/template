@@ -62,6 +62,10 @@ type Config struct {
 
 	GzipEnabled bool
 
+	// Background jobs worker (internal/core/jobs). Off by default.
+	JobsEnabled      bool
+	JobsPollInterval time.Duration
+
 	PprofEnabled bool
 	PprofAddr    string
 }
@@ -97,6 +101,8 @@ func Load() (*Config, error) {
 		RateLimitBurst:      l.intVal("RATE_LIMIT_BURST", 40),
 		TrustedProxies:      l.cidrs("TRUSTED_PROXIES"),
 		GzipEnabled:         l.boolVal("GZIP_ENABLED", true),
+		JobsEnabled:         l.boolVal("JOBS_ENABLED", false),
+		JobsPollInterval:    l.dur("JOBS_POLL_INTERVAL", time.Second),
 		PprofEnabled:        l.boolVal("PPROF_ENABLED", false),
 		PprofAddr:           l.str("PPROF_ADDR", "127.0.0.1:6060"),
 	}
