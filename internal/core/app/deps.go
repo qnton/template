@@ -4,8 +4,9 @@
 // middleware chain and runs the HTTP server.
 //
 // Features import this package for Deps and Feature only; this package never
-// imports a feature (the registry is an explicit list in cmd/server/main.go), so
-// there is no import cycle and Core stays independently upgradeable.
+// imports a concrete feature (the registry is project-owned under
+// internal/feature/registry), so there is no import cycle and Core stays
+// independently upgradeable.
 package app
 
 import (

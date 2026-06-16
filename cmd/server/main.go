@@ -25,7 +25,7 @@ import (
 	"github.com/example/app/internal/core/config"
 	"github.com/example/app/internal/core/db"
 	"github.com/example/app/internal/core/httpx"
-	"github.com/example/app/internal/feature/example"
+	"github.com/example/app/internal/feature/registry"
 )
 
 // version is stamped at build time via -ldflags "-X main.version=…".
@@ -83,14 +83,7 @@ func run() error {
 		Assets: assetMgr,
 	}
 
-	// ── Feature registry ────────────────────────────────────────────────────
-	// Add a feature: import it above, add ONE line here. Remove a feature:
-	// delete its package + migration, then delete its import + line.
-	features := []app.Feature{
-		example.New(deps),
-	}
-
-	return app.New(deps, features...).Run(ctx)
+	return app.New(deps, registry.Features(deps)...).Run(ctx)
 }
 
 // runHealthcheck performs an HTTP GET against the local /healthz and maps the

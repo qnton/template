@@ -33,8 +33,8 @@ Base version is in `TEMPLATE_VERSION`.
 chain, config, DB pool, asset/island loader, CSRF, layout shell). Features are
 self-contained slices that depend only on the small **`app.Deps`** struct
 (`Logger`, `Pool`, `Config`, `CSRF`, `Assets`) and register routes via the
-**`app.Feature`** interface. Core never imports a feature; the registry is one
-explicit list in `cmd/server/main.go`.
+**`app.Feature`** interface. Core never imports concrete features;
+`internal/feature/registry` is the project-owned list of enabled slices.
 
 **Ownership (canonical — referenced by `UPGRADING.md` and `make upgrade-check`):**
 
@@ -51,14 +51,25 @@ Rule: **extend by adding files (features, islands, migrations), never by editing
 Core files.** Adding files under template-owned dirs (e.g. a new shared component)
 is fine — updates overwrite base files but leave your additions.
 
+**Strict feature anatomy (`make structure` enforces this):**
+- `handler.go` — package name matches the feature directory; defines
+  `type Module`, `func New(deps app.Deps) *Module`, and
+  `func (m *Module) Routes(mux *http.ServeMux)`.
+- `view.templ` — feature views and HTMX partials.
+- `handler_test.go` — HTTP behavior tests, preferably with DB-free fakes.
+- `queries.sql` — optional; if present, the feature must have sqlc-generated
+  `store/` files and a matching `sqlc.yaml` entry.
+- `internal/feature/registry` is not a feature slice; it only enables slices.
+
 ## 4. Recipes
 
 **Add a feature** (`internal/feature/<name>/`):
 1. `handler.go` — `type Module struct{…}`, `func New(deps app.Deps) *Module`, `func (m *Module) Routes(mux *http.ServeMux)`.
 2. `view.templ` — components rendered by the handlers.
-3. `queries.sql` — sqlc queries; add a matching `sql:` entry in `sqlc.yaml` (`out`/`queries` → this folder, `package: store`).
-4. Register: one import + one line in the `features` slice in `cmd/server/main.go`.
-5. `make sqlc && make build`. (Remove a feature = delete the folder + its migration + the import/line, then `make generate`.)
+3. `handler_test.go` — handler tests using a fake store where possible.
+4. Optional `queries.sql` — sqlc queries; add a matching `sql:` entry in `sqlc.yaml` (`out`/`queries` → this folder, `package: store`).
+5. Register: one import + one line in `internal/feature/registry/registry.go`.
+6. `make generate && make structure && make build`. (Remove a feature = delete the folder + its migration/query config + registry line, then `make generate && make structure`.)
 
 **Add a JS island** (`static/js/islands/<name>.mjs`):
 1. Export `mount(el, opts)`; keep all logic here (no inline handlers — strict CSP).
@@ -97,6 +108,7 @@ is fine — updates overwrite base files but leave your additions.
 | `make generate` | Run sqlc + templ + tailwind |
 | `make sqlc` / `make templ` / `make tailwind` | Individual generators |
 | `make build` | Generate + build the hardened static binary |
+| `make structure` | Validate strict app/feature structure |
 | `make migrate` / `make migrate-down` | Apply / roll back migrations (goose) |
 | `make test` | `go test ./... -race` |
 | `make bench` | Benchmarks |
@@ -104,7 +116,7 @@ is fine — updates overwrite base files but leave your additions.
 | `make vuln` | `govulncheck ./...` |
 | `make verify-assets` | Check vendored asset checksums |
 | `make vendor` | `go mod tidy && go mod vendor` |
-| `make check` | vet + test + vuln + verify-assets (pre-commit) |
+| `make check` | structure + vet + test + vuln + verify-assets (pre-commit) |
 | `make docker` | Build the production image |
 | `make sbom` | Syft SBOM |
 | `make upgrade-check` | Compare `TEMPLATE_VERSION` with newest template tag |
@@ -114,9 +126,10 @@ Docker-only (no local Go): prefix with `docker compose run --rm tools `, e.g.
 
 ## 8. Definition of Done (green before every commit)
 
-`gofmt` clean · `go vet` clean · `sqlc generate` & `templ generate` produce **no diff**
-· Tailwind rebuilt · `go test ./... -race` green · `govulncheck` clean ·
-`make verify-assets` passes. `make check` covers most of these.
+`make structure` green · `gofmt` clean · `go vet` clean · `sqlc generate` &
+`templ generate` produce **no diff** · Tailwind rebuilt · `go test ./... -race`
+green · `govulncheck` clean · `make verify-assets` passes. `make check` covers
+most of these.
 
 ## 9. Updating from the template
 

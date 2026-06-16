@@ -53,13 +53,16 @@ dev: ## Live reload: templ + tailwind watchers + air (install: go install github
 	kill 0
 
 ## ── Quality gates ────────────────────────────────────────────────────────────
-.PHONY: check vet test bench vuln verify-assets
-check: vet test vuln verify-assets ## Run all pre-commit checks
+.PHONY: check structure vet test bench vuln verify-assets
+check: structure vet test vuln verify-assets ## Run all pre-commit checks
 
 vet: ## go vet + gofmt check (excludes generated files)
 	$(GO) vet ./...
 	@unformatted=$$(gofmt -l . | grep -v '_templ.go' || true); \
 	 if [ -n "$$unformatted" ]; then echo "gofmt needed:"; echo "$$unformatted"; exit 1; fi
+
+structure: ## Validate the strict app/feature structure
+	$(GO) run ./cmd/structurecheck
 
 test: ## Run tests with the race detector
 	$(GO) test ./... -race

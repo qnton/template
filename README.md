@@ -33,7 +33,7 @@ That's it. To regenerate code or run tests without a local Go toolchain:
 ```bash
 docker compose run --rm tools make generate   # sqlc + templ + tailwind
 docker compose run --rm tools make test        # go test ./... -race (uses the db service)
-docker compose run --rm tools make check        # vet + test + vuln + verify-assets
+docker compose run --rm tools make check        # structure + vet + test + vuln + verify-assets
 ```
 
 **With a local toolchain** (Go + `make`, plus `templ`, `sqlc`, `goose`, the
@@ -44,6 +44,7 @@ for live reload. Start the database with `docker compose up -d db && make migrat
 
 ```
 cmd/server/main.go        Entry point: config → logger → pool → app; -healthcheck subcommand
+cmd/structurecheck/       Repo-structure checker used by make check
 internal/core/            STABLE CORE (template-owned)
   config/                 Env config (stdlib only)
   db/                     pgxpool setup (tuned), the single data-access seam
@@ -53,6 +54,7 @@ internal/core/            STABLE CORE (template-owned)
   app/                    Deps, Feature interface, router + server + graceful shutdown
   validate/               Input validation helpers
 internal/feature/         FEATURE SLICES (project-owned, swappable)
+  registry/               Project-owned list of enabled features
   example/                Reference slice: HTMX list/create/delete (+ store/ = sqlc output)
 internal/view/            layout shell + reusable templ components
 static/                   css/ (Tailwind in/out) · js/ (core.mjs, htmx, islands, vendor)
@@ -61,19 +63,42 @@ migrations/               Numbered goose .sql (also sqlc's schema source)
 
 **Core vs features.** Core is a small, stable surface. A feature receives the
 `app.Deps` struct and registers routes through `app.Feature`. Core never imports a
-feature — the registry is one explicit list in `main.go`. This is what makes Core
-independently upgradeable. See [`CLAUDE.md`](CLAUDE.md) for the ownership boundary.
+feature — the project-owned registry is the one explicit list of enabled slices.
+This is what makes Core independently upgradeable. See [`CLAUDE.md`](CLAUDE.md)
+for the ownership boundary.
+
+### Strict application structure
+
+This template is intentionally opinionated: every application feature lives in a
+feature slice under `internal/feature/<name>/`, and `make structure` enforces the
+shape. That gives the repo a Laravel-like working contract without adding a heavy
+framework layer.
+
+Each feature slice uses this anatomy:
+
+| Path | Purpose |
+|---|---|
+| `handler.go` | Defines `type Module`, `func New(deps app.Deps) *Module`, and `func (m *Module) Routes(mux *http.ServeMux)`. |
+| `view.templ` | Owns the feature's templ views and HTMX partials. |
+| `handler_test.go` | Covers the HTTP behavior with DB-free fakes where possible. |
+| `queries.sql` | Optional. Present only for DB-backed features; sqlc generates `store/`. |
+| `store/` | Generated sqlc package for that feature only. Do not hand-edit generated files. |
+
+`cmd/server/main.go` imports `internal/feature/registry` only. To enable a
+feature, edit `internal/feature/registry/registry.go`; do not wire concrete
+features into the server bootstrap.
 
 ### Add a feature (the pattern)
 
 1. Create `internal/feature/<name>/` with `handler.go` (`New(deps) *Module` +
-   `Routes(mux)`), `view.templ`, and `queries.sql`.
-2. Add a `sql:` entry in `sqlc.yaml` pointing at the folder (`package: store`).
-3. Register it: one import + one line in the `features` list in `cmd/server/main.go`.
-4. `make sqlc && make build`.
+   `Routes(mux)`), `view.templ`, and `handler_test.go`.
+2. If the feature uses Postgres, add `queries.sql` and a `sql:` entry in
+   `sqlc.yaml` pointing at the folder (`package: store`).
+3. Register it: one import + one line in `internal/feature/registry/registry.go`.
+4. `make generate && make structure && make build`.
 
 Removing a feature is the inverse: delete the folder + its migration + the one
-registry line, then `make generate`.
+registry line, then `make generate && make structure`.
 
 ### Add a JS island (the pattern)
 
