@@ -110,6 +110,11 @@ sending). No central config field, no bootstrap wiring.
 `cache.NewPostgres(deps.Pool)` (shared, `cache` table). Both satisfy `cache.Cache`
 (`Get`/`Set`/`Delete`); `cache.Remember(ctx, c, key, ttl, fn)` for compute-and-store.
 
+**Events** (`internal/core/events`): a shared `events.New()` bus; `events.Listen[T]`
+for typed listeners, `bus.Emit(ctx, "name", payload)` to dispatch (synchronous).
+Hold one bus where features can reach it (e.g. constructed in `registry`). For
+async, have a listener enqueue a job.
+
 **Reusable UI:** `internal/view/component/` ships a token-based starter design
 system (`Button`, `Alert`/`AlertBox`, `Badge`, `Card`, `CardLink`, `Stat`,
 `EmptyState`, `Icon` + lucide set, and `Label`/`Field`/`PageHeader`/`Section`/

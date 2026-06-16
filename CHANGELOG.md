@@ -33,6 +33,8 @@ batteries, each removable.
   in-process `MemoryCache` (TTL) and a `PostgresCache` (`cache` table), plus a
   `Remember` helper. Ships `migrations/00004_create_cache.sql`. Unwired; build a
   driver on demand.
+- **Events** (`internal/core/events`): synchronous in-process bus with `On`/`Emit`,
+  a type-safe `Listen[T]` generic, joined listener errors, and panic recovery.
 
 ## [0.2.0]
 
