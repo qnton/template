@@ -10,7 +10,10 @@ func TestRateLimiterBurstAndRefill(t *testing.T) {
 	base := time.Unix(1_700_000_000, 0)
 	rl.now = func() time.Time { return base }
 
-	if !rl.allow("a") || !rl.allow("a") {
+	// Two separate calls (each consumes a token) so the burst of 2 is exhausted.
+	first := rl.allow("a")
+	second := rl.allow("a")
+	if !first || !second {
 		t.Fatal("first two requests should be allowed (burst = 2)")
 	}
 	if rl.allow("a") {

@@ -31,6 +31,7 @@ const (
 	nonceKey contextKey = iota
 	realIPKey
 	csrfTokenKey
+	requestIDKey
 )
 
 // Nonce returns the per-request CSP nonce, or "" if the security-headers

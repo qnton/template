@@ -18,11 +18,14 @@ const (
 	featureRoot      = "internal/feature"
 	serverMainPath   = "cmd/server/main.go"
 	sqlcPath         = "sqlc.yaml"
+	migrationsDir    = "migrations"
 	registryDirName  = "registry"
 	requiredHandler  = "handler.go"
 	requiredView     = "view.templ"
 	requiredHTTPTest = "handler_test.go"
 )
+
+var migrationPrefix = regexp.MustCompile(`^(\d+)_`)
 
 func main() {
 	if err := run(); err != nil {
@@ -50,6 +53,8 @@ func run() error {
 	for _, feature := range features {
 		errs = append(errs, checkFeature(feature, sqlcData)...)
 	}
+
+	errs = append(errs, checkMigrations()...)
 
 	if len(errs) > 0 {
 		sort.Strings(errs)
@@ -135,6 +140,11 @@ func checkFeature(name string, sqlcData []byte) []string {
 		errs = append(errs, checkHandlerShape(name, handlerPath)...)
 	}
 
+	testPath := filepath.Join(dir, requiredHTTPTest)
+	if exists(testPath) {
+		errs = append(errs, checkHasTestFunc(testPath)...)
+	}
+
 	queriesPath := filepath.Join(dir, "queries.sql")
 	if exists(queriesPath) {
 		errs = append(errs, checkDBFeature(dir, sqlcData)...)
@@ -183,6 +193,53 @@ func checkHandlerShape(name, path string) []string {
 	}
 	if file.Name.Name != name {
 		errs = append(errs, fmt.Sprintf("%s package name must be %q", path, name))
+	}
+	return errs
+}
+
+// checkHasTestFunc ensures handler_test.go actually contains a test, so the
+// required test file cannot be an empty placeholder.
+func checkHasTestFunc(path string) []string {
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+	if err != nil {
+		return []string{fmt.Sprintf("parse %s: %v", path, err)}
+	}
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if ok && fn.Recv == nil && strings.HasPrefix(fn.Name.Name, "Test") {
+			return nil
+		}
+	}
+	return []string{fmt.Sprintf("%s must contain at least one Test function", path)}
+}
+
+// checkMigrations verifies every migration has a numeric prefix and that no two
+// share a version number (normalizing leading zeros).
+func checkMigrations() []string {
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		return []string{fmt.Sprintf("read %s: %v", migrationsDir, err)}
+	}
+	seen := map[string]string{}
+	var errs []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
+			continue
+		}
+		m := migrationPrefix.FindStringSubmatch(e.Name())
+		if m == nil {
+			errs = append(errs, fmt.Sprintf("migration %q must start with a numeric prefix (e.g. 00003_name.sql)", e.Name()))
+			continue
+		}
+		num := strings.TrimLeft(m[1], "0")
+		if num == "" {
+			num = "0"
+		}
+		if prev, ok := seen[num]; ok {
+			errs = append(errs, fmt.Sprintf("migrations %q and %q share version number %s", prev, e.Name(), num))
+			continue
+		}
+		seen[num] = e.Name()
 	}
 	return errs
 }

@@ -27,24 +27,27 @@ type App struct {
 }
 
 // New wires the router and the middleware chain. Routes: the static asset
-// handler, /healthz, then every feature's own routes. The chain is applied
-// outermost-first (see ordering below).
+// handler, /healthz (liveness) and /readyz (readiness), then every feature's own
+// routes. The chain is applied outermost-first (see ordering below).
 func New(deps Deps, features ...Feature) *App {
+	cfg := deps.Config
+
 	mux := http.NewServeMux()
 	mux.Handle("GET "+assets.URLPrefix, deps.Assets.Handler())
-	mux.HandleFunc("GET /healthz", healthz(deps.Pool))
+	mux.HandleFunc("GET /healthz", liveness())
+	mux.HandleFunc("GET /readyz", readiness(deps.Pool, cfg.HealthCheckTimeout))
 
 	for _, f := range features {
 		f.Routes(mux)
 	}
 
-	cfg := deps.Config
-
-	// Outermost → innermost. Recover wraps everything; logging observes the
-	// final status; real-IP runs before the rate limiter (which keys on it);
-	// security headers set the nonce in context before handlers render; CSRF runs
-	// after the size limit so form parsing is bounded.
+	// Outermost → innermost. RequestID is outermost so the ID tags the panic and
+	// request logs and is echoed even on panic; Recover wraps everything below it;
+	// logging observes the final status; real-IP runs before the rate limiter
+	// (which keys on it); security headers set the nonce in context before
+	// handlers render; CSRF runs after the size limit so form parsing is bounded.
 	chain := []httpx.Middleware{
+		httpx.RequestID(cfg.TrustedProxies),
 		httpx.Recover(deps.Logger),
 		httpx.RequestLogger(deps.Logger),
 		httpx.RealIP(cfg.TrustedProxies),
@@ -118,17 +121,28 @@ func (a *App) Run(ctx context.Context) error {
 	return nil
 }
 
-// healthz reports readiness by pinging the database with a short deadline.
-func healthz(pool *pgxpool.Pool) http.HandlerFunc {
+// liveness reports that the process is up. It deliberately does NOT touch the
+// database, so an orchestrator's liveness probe never restarts the app for a
+// transient DB outage (that is the readiness probe's job).
+func liveness() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("ok"))
+	}
+}
+
+// readiness reports whether the app can serve traffic by pinging the database
+// within timeout. It backs readiness probes and the container HEALTHCHECK.
+func readiness(pool *pgxpool.Pool, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
 		if err := pool.Ping(ctx); err != nil {
-			http.Error(w, "unhealthy", http.StatusServiceUnavailable)
+			http.Error(w, "unready", http.StatusServiceUnavailable)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		_, _ = w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ready"))
 	}
 }
 
@@ -149,9 +163,11 @@ func (a *App) startPprof(ctx context.Context) {
 			a.logger.Error("pprof server error", slog.Any("error", err))
 		}
 	}()
-	go func() {
+	go func() { //nolint:gosec // G118: shutdown waiter; ctx is already cancelled, so a fresh background ctx is required
 		<-ctx.Done()
-		sc, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		// ctx is already cancelled here, so derive a fresh deadline bounded by the
+		// same ShutdownTimeout budget the main server uses (not a magic constant).
+		sc, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
 		defer cancel()
 		_ = srv.Shutdown(sc)
 	}()
