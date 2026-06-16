@@ -1,0 +1,33 @@
+package component
+
+// Card and its parts are a simple composable surface. Each part takes an optional
+// extra class. Compose: Card { CardHeader { CardTitle{...} } CardBody{...} }.
+templ Card(class string) {
+	<div class={ "rounded-lg border bg-card", class }>
+		{ children... }
+	</div>
+}
+
+templ CardHeader(class string) {
+	<div class={ "border-b px-4 py-3", class }>
+		{ children... }
+	</div>
+}
+
+templ CardTitle(class string) {
+	<h3 class={ "font-semibold text-heading-sm leading-none", class }>
+		{ children... }
+	</h3>
+}
+
+templ CardBody(class string) {
+	<div class={ "p-4", class }>
+		{ children... }
+	</div>
+}
+
+templ CardFooter(class string) {
+	<div class={ "flex items-center justify-end border-t px-4 py-3", class }>
+		{ children... }
+	</div>
+}

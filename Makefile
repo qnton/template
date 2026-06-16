@@ -42,6 +42,26 @@ templ: ## Generate Go from .templ files
 tailwind: ## Build minified CSS (Tailwind standalone)
 	$(TAILWIND) -i static/css/input.css -o static/css/app.css --minify
 
+## ── Scaffold (generators) ────────────────────────────────────────────────────
+.PHONY: new-feature new-migration new-island new-component
+new-feature: ## Scaffold a feature slice: make new-feature NAME=posts [DB=1]
+	@test -n "$(NAME)" || { echo "usage: make new-feature NAME=<name> [DB=1]"; exit 2; }
+	$(GO) run ./cmd/scaffold feature $(NAME) $(if $(DB),--db,)
+	$(MAKE) generate
+
+new-migration: ## Scaffold a migration: make new-migration NAME=create_posts
+	@test -n "$(NAME)" || { echo "usage: make new-migration NAME=<name>"; exit 2; }
+	$(GO) run ./cmd/scaffold migration $(NAME)
+
+new-island: ## Scaffold a JS island: make new-island NAME=chart
+	@test -n "$(NAME)" || { echo "usage: make new-island NAME=<name>"; exit 2; }
+	$(GO) run ./cmd/scaffold island $(NAME)
+
+new-component: ## Scaffold a view component: make new-component NAME=avatar
+	@test -n "$(NAME)" || { echo "usage: make new-component NAME=<name>"; exit 2; }
+	$(GO) run ./cmd/scaffold component $(NAME)
+	$(MAKE) templ
+
 ## ── Build / run ──────────────────────────────────────────────────────────────
 .PHONY: build dev
 build: generate ## Generate, then build the hardened static binary

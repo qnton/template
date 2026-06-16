@@ -1,6 +1,26 @@
 package component
 
-// Alert renders an inline message. kind is "info" (default), "success" or "error".
+// Alert renders a simple inline message with a leading variant icon. kind is
+// "info" (default), "success", "warning", "error"/"destructive".
 templ Alert(kind string, message string) {
-	<div class={ alertClasses(kind) } role="alert">{ message }</div>
+	<div class={ alertClasses(kind) } role="alert">
+		@Icon(alertIcon(kind), "")
+		<div>{ message }</div>
+	</div>
+}
+
+// AlertBox is the richer alert with an optional title and arbitrary children
+// (e.g. lists, actions). kind matches Alert.
+templ AlertBox(kind, title string) {
+	<div class={ alertClasses(kind) } role="alert">
+		@Icon(alertIcon(kind), "")
+		<div class="space-y-1">
+			if title != "" {
+				<p class="font-medium leading-none">{ title }</p>
+			}
+			<div class="text-muted-foreground [&_strong]:text-foreground">
+				{ children... }
+			</div>
+		</div>
+	</div>
 }

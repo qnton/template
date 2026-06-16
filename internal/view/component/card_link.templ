@@ -1,0 +1,27 @@
+package component
+
+// CardLinkProps configures a navigation card: icon chip + title + description +
+// trailing arrow, handy for dashboards and section hubs.
+type CardLinkProps struct {
+	Href        string
+	Icon        string
+	Title       string
+	Description string
+}
+
+templ CardLink(p CardLinkProps) {
+	<a href={ templ.SafeURL(p.Href) } class={ cardSurfaceClasses("default", "row") }>
+		if p.Icon != "" {
+			<span class="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background text-primary transition-colors group-hover:border-primary/30 group-hover:bg-primary/5">
+				@Icon(p.Icon, "")
+			</span>
+		}
+		<span class="min-w-0 flex-1 space-y-0.5">
+			<span class="block font-medium leading-tight">{ p.Title }</span>
+			if p.Description != "" {
+				<span class="block text-sm text-muted-foreground">{ p.Description }</span>
+			}
+		</span>
+		@Icon("ArrowRight", "size-4 shrink-0 self-center text-muted-foreground transition-colors group-hover:text-foreground")
+	</a>
+}

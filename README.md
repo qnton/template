@@ -51,12 +51,13 @@ internal/core/            STABLE CORE (template-owned)
   httpx/                  Middleware chain: recover, security headers + nonce CSP,
                           real-IP, rate limit, CSRF, gzip, size limit, logging
   assets/                 Embedded-FS server, fingerprint/ETag, SRI, import map
+  view/                   Head/CSP seam (nonce'd import map, CSRF meta, SRI)
   app/                    Deps, Feature interface, router + server + graceful shutdown
   validate/               Input validation helpers
 internal/feature/         FEATURE SLICES (project-owned, swappable)
   registry/               Project-owned list of enabled features
   example/                Reference slice: HTMX list/create/delete (+ store/ = sqlc output)
-internal/view/            layout shell + reusable templ components
+internal/view/            Layout + components (project-owned scaffolding — yours to edit)
 static/                   css/ (Tailwind in/out) · js/ (core.mjs, htmx, islands, vendor)
 migrations/               Numbered goose .sql (also sqlc's schema source)
 ```
@@ -89,6 +90,12 @@ feature, edit `internal/feature/registry/registry.go`; do not wire concrete
 features into the server bootstrap.
 
 ### Add a feature (the pattern)
+
+Fastest is the generator: **`make new-feature NAME=<name>`** scaffolds the slice
+(handler + view + test) and wires it into the registry so it passes `make structure`
+right away; add `DB=1` for a Postgres-backed feature (it also emits `queries.sql`, an
+auto-numbered migration, and the `sqlc.yaml` block). There are matching
+`make new-migration` / `new-island` / `new-component` generators. By hand the steps are:
 
 1. Create `internal/feature/<name>/` with `handler.go` (`New(deps) *Module` +
    `Routes(mux)`), `view.templ`, and `handler_test.go`.

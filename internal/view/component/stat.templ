@@ -1,0 +1,44 @@
+package component
+
+// StatProps configures a Stat metric card. Tone is neutral/primary/success/
+// warning (colours the icon chip). If Href is set the card becomes a link. Hint
+// renders muted next to the value.
+type StatProps struct {
+	Icon  string
+	Label string
+	Value string
+	Hint  string
+	Tone  string
+	Href  string
+}
+
+templ Stat(p StatProps) {
+	if p.Href != "" {
+		<a href={ templ.SafeURL(p.Href) } class={ cardSurfaceClasses("default", "stack"), "min-h-[7.5rem]" }>
+			@statInner(p)
+		</a>
+	} else {
+		<div class="flex min-h-[7.5rem] flex-col gap-2 rounded-lg border bg-card p-4">
+			@statInner(p)
+		</div>
+	}
+}
+
+templ statInner(p StatProps) {
+	<div class="flex items-start justify-between gap-2">
+		<span class="truncate text-sm text-muted-foreground">{ p.Label }</span>
+		if p.Icon != "" {
+			<span class={ statChipClasses(p.Tone) }>
+				@Icon(p.Icon, "")
+			</span>
+		}
+	</div>
+	<div class="mt-auto space-y-2 pt-3">
+		<div class="flex items-baseline gap-2">
+			<span class="text-3xl font-semibold tracking-tight text-foreground tabular-nums">{ p.Value }</span>
+			if p.Hint != "" {
+				<span class="text-micro text-muted-foreground tabular-nums">{ p.Hint }</span>
+			}
+		</div>
+	</div>
+}

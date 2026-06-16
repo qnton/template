@@ -8,12 +8,16 @@ package component
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// ButtonProps configures Button. Variant is "primary" (default), "secondary" or
-// "danger"; Class appends extra utility classes; Type defaults to "button"; Attrs
-// passes through arbitrary attributes (e.g. hx-* for HTMX actions).
+// ButtonProps configures Button. Variant is one of default/secondary/outline/
+// ghost/destructive/success/link ("primary" and "danger" remain as aliases);
+// Size is default/xs/sm/lg/xl/icon/iconSm. Icon (optional) renders a leading
+// lucide icon. Class appends extra utility classes; Type defaults to "button";
+// Attrs passes through arbitrary attributes (e.g. hx-* for HTMX actions).
 type ButtonProps struct {
 	Type    string
 	Variant string
+	Size    string
+	Icon    string
 	Class   string
 	Attrs   templ.Attributes
 }
@@ -39,7 +43,7 @@ func Button(p ButtonProps) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var2 = []any{buttonClasses(p.Variant), p.Class}
+		var templ_7745c5c3_Var2 = []any{buttonClasses(p.Variant, p.Size), p.Class}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -51,7 +55,7 @@ func Button(p ButtonProps) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(orDefault(p.Type, "button"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/component/button.templ`, Line: 14, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/component/button.templ`, Line: 18, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -81,6 +85,12 @@ func Button(p ButtonProps) templ.Component {
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, ">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
+		}
+		if p.Icon != "" {
+			templ_7745c5c3_Err = Icon(p.Icon, "").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		templ_7745c5c3_Err = templ_7745c5c3_Var1.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

@@ -1,0 +1,38 @@
+// Package coreview holds the template-owned view seam: the small, security-
+// critical fragments that must stay upgradeable even though the surrounding
+// layout/shell is project-owned. Keep this minimal — only the parts a project
+// must not diverge on (CSP nonce, import map, CSRF meta, vendored-script SRI).
+package coreview
+
+import (
+	"github.com/example/app/internal/core/assets"
+	"github.com/example/app/internal/core/httpx"
+)
+
+// Head renders the security- and asset-critical contents of <head>. It threads
+// the per-request CSP nonce into the (only) inline script — the import map —
+// reads the masked CSRF token from the context for the meta tag HTMX uses, and
+// links the fingerprinted CSS/JS.
+//
+// This is template-owned: it lives under internal/core/ so template updates can
+// ship CSP/asset/CSRF fixes without touching your project-owned layout. Your
+// layout.Base calls @coreview.Head(a, title) inside <head> and owns everything
+// else (charset, viewport, favicons, page chrome).
+//
+// Scripts: htmx loads as a classic 'self' script with SRI; core.mjs loads as a
+// module (deferred). The import map MUST precede core.mjs so island specifiers
+// resolve. No inline event handlers anywhere (strict CSP).
+templ Head(a *assets.Manager, title string) {
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>{ title }</title>
+	<meta name="csrf-token" content={ httpx.CSRFToken(ctx) }/>
+	// Configure HTMX via meta (no inline script). includeIndicatorStyles:false
+	// stops HTMX injecting an inline <style> (which the CSP would block);
+	// responseHandling additionally treats 422 as a swappable validation response.
+	<meta name="htmx-config" content={ `{"includeIndicatorStyles":false,"responseHandling":[{"code":"204","swap":false},{"code":"422","swap":true},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}` }/>
+	<link rel="stylesheet" href={ a.URL("css/app.css") }/>
+	@templ.Raw(a.ImportMapScript(httpx.Nonce(ctx)))
+	<script src={ a.URL("js/htmx.min.js") } integrity={ a.Integrity("js/htmx.min.js") } crossorigin="anonymous" defer></script>
+	<script type="module" src={ a.URL("js/core.mjs") }></script>
+}

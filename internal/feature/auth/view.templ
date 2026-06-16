@@ -36,18 +36,33 @@ templ RegisterPage(a *assets.Manager, email, formErr string) {
 }
 
 // AccountPage is the demo protected page; it is only reachable via RequireAuth.
-templ AccountPage(a *assets.Manager, user store.User) {
-	@layout.Base(a, "Account · App") {
-		<div class="mx-auto max-w-sm space-y-6">
-			<h1 class="text-2xl font-bold tracking-tight">Your account</h1>
-			<p class="text-sm">Signed in as <span class="font-medium">{ user.Email }</span>.</p>
+// It renders inside AppShell (the authenticated sidebar layout) to demonstrate it,
+// whereas the public login/register pages use the minimal Base shell.
+templ AccountPage(a *assets.Manager, user store.User, data layout.ShellData) {
+	@layout.AppShell(a, data) {
+		@component.PageHeader("Your account", "You're signed in — this page renders inside the AppShell layout.") {
 			<form method="post" action="/logout">
 				<input type="hidden" name="csrf_token" value={ httpx.CSRFToken(ctx) }/>
-				@component.Button(component.ButtonProps{Type: "submit", Variant: "secondary"}) {
+				@component.Button(component.ButtonProps{Type: "submit", Variant: "outline", Size: "sm", Icon: "LogOut"}) {
 					Sign out
 				}
 			</form>
+		}
+		<div class="grid gap-4 sm:grid-cols-3">
+			@component.Stat(component.StatProps{Icon: "Users", Label: "Account", Value: "Active", Tone: "primary"})
+			@component.Stat(component.StatProps{Icon: "ShieldCheck", Label: "Session", Value: "Secure", Tone: "success"})
+			@component.Stat(component.StatProps{Icon: "LayoutGrid", Label: "Features", Value: "2", Hint: "example · auth"})
 		</div>
+		@component.Card("") {
+			@component.CardHeader("") {
+				@component.CardTitle("") {
+					Signed in
+				}
+			}
+			@component.CardBody("") {
+				<p class="text-sm text-muted-foreground">You are signed in as <span class="font-medium text-foreground">{ user.Email }</span>.</p>
+			}
+		}
 	}
 }
 
