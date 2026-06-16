@@ -4,7 +4,7 @@
 // no JavaScript of its own.
 //
 // It is intentionally REMOVABLE: delete this package, delete its migration, and
-// delete the one registry line in cmd/server/main.go to remove it cleanly.
+// delete the one line in internal/feature/registry to remove it cleanly.
 package example
 
 import (
