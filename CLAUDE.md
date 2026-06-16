@@ -115,6 +115,10 @@ for typed listeners, `bus.Emit(ctx, "name", payload)` to dispatch (synchronous).
 Hold one bus where features can reach it (e.g. constructed in `registry`). For
 async, have a listener enqueue a job.
 
+**Storage** (`internal/core/storage`): `s, _ := storage.FromEnv()` (or
+`storage.NewDisk(root)`), then `Put`/`Get`/`Delete`/`Exists`. Keys are sanitised
+(no path traversal). Add an S3 driver by implementing `storage.Storage`.
+
 **Reusable UI:** `internal/view/component/` ships a token-based starter design
 system (`Button`, `Alert`/`AlertBox`, `Badge`, `Card`, `CardLink`, `Stat`,
 `EmptyState`, `Icon` + lucide set, and `Label`/`Field`/`PageHeader`/`Section`/

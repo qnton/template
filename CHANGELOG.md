@@ -35,6 +35,9 @@ batteries, each removable.
   driver on demand.
 - **Events** (`internal/core/events`): synchronous in-process bus with `On`/`Emit`,
   a type-safe `Listen[T]` generic, joined listener errors, and panic recovery.
+- **Storage** (`internal/core/storage`): `Storage` blob interface + a stdlib disk
+  driver with path-traversal protection; `storage.FromEnv()` (`STORAGE_*`). S3 is a
+  documented extension point (implement the interface) to keep deps tiny.
 
 ## [0.2.0]
 
