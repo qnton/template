@@ -101,6 +101,11 @@ register recurring work in `registry.RegisterSchedule` with
 `s.Every("name", interval, fn)`. In-process per replica — guard once-only tasks
 with a Postgres advisory lock.
 
+**Mail** (`internal/core/mail`): build a mailer on demand with
+`m, _ := mail.FromEnv(deps.Logger)`, then `m.Send(ctx, mail.Message{…})`. Driver +
+credentials come from `MAIL_*` env (`MAIL_DRIVER=log` default; `smtp` for real
+sending). No central config field, no bootstrap wiring.
+
 **Reusable UI:** `internal/view/component/` ships a token-based starter design
 system (`Button`, `Alert`/`AlertBox`, `Badge`, `Card`, `CardLink`, `Stat`,
 `EmptyState`, `Icon` + lucide set, and `Label`/`Field`/`PageHeader`/`Section`/

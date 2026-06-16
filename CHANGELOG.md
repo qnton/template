@@ -26,6 +26,9 @@ batteries, each removable.
 - **Scheduler** (`internal/core/schedule`): in-process, stdlib-`time` task
   scheduler (`Every(name, interval, fn)`) with panic recovery and overlap-skipping.
   Optional via `SCHEDULER_ENABLED`; register tasks in `registry.RegisterSchedule`.
+- **Mail** (`internal/core/mail`): `Mailer` interface with a stdlib `net/smtp`
+  driver and a log driver (default). Self-configuring via `mail.FromEnv(logger)` and
+  `MAIL_*` env vars; supports text/HTML (multipart/alternative). No runtime dep.
 
 ## [0.2.0]
 
