@@ -51,12 +51,13 @@ internal/core/            STABLE CORE (template-owned)
   httpx/                  Middleware chain: recover, security headers + nonce CSP,
                           real-IP, rate limit, CSRF, gzip, size limit, logging
   assets/                 Embedded-FS server, fingerprint/ETag, SRI, import map
+  view/                   Head/CSP seam (nonce'd import map, CSRF meta, SRI)
   app/                    Deps, Feature interface, router + server + graceful shutdown
   validate/               Input validation helpers
 internal/feature/         FEATURE SLICES (project-owned, swappable)
   registry/               Project-owned list of enabled features
   example/                Reference slice: HTMX list/create/delete (+ store/ = sqlc output)
-internal/view/            layout shell + reusable templ components
+internal/view/            Layout + components (project-owned scaffolding — yours to edit)
 static/                   css/ (Tailwind in/out) · js/ (core.mjs, htmx, islands, vendor)
 migrations/               Numbered goose .sql (also sqlc's schema source)
 ```
@@ -90,6 +91,12 @@ features into the server bootstrap.
 
 ### Add a feature (the pattern)
 
+Fastest is the generator: **`make new-feature NAME=<name>`** scaffolds the slice
+(handler + view + test) and wires it into the registry so it passes `make structure`
+right away; add `DB=1` for a Postgres-backed feature (it also emits `queries.sql`, an
+auto-numbered migration, and the `sqlc.yaml` block). There are matching
+`make new-migration` / `new-island` / `new-component` generators. By hand the steps are:
+
 1. Create `internal/feature/<name>/` with `handler.go` (`New(deps) *Module` +
    `Routes(mux)`), `view.templ`, and `handler_test.go`.
 2. If the feature uses Postgres, add `queries.sql` and a `sql:` entry in
@@ -99,6 +106,26 @@ features into the server bootstrap.
 
 Removing a feature is the inverse: delete the folder + its migration + the one
 registry line, then `make generate && make structure`.
+
+### Optional batteries
+
+Beyond the HTTP/DB/view foundation, `internal/core/` ships small, **stdlib-first,
+opt-in** modules — Laravel's productivity, built the idiomatic Go way (no ORM, no
+facades, no service container). Each is removable and adds no runtime dependency
+beyond pgx:
+
+| Module | What it is | Wiring |
+|---|---|---|
+| `jobs` | Postgres queue (`FOR UPDATE SKIP LOCKED`) + worker, retries | `JOBS_ENABLED`; handlers in `registry.RegisterJobs` |
+| `schedule` | In-process recurring tasks (`Every`) | `SCHEDULER_ENABLED`; tasks in `registry.RegisterSchedule` |
+| `mail` | `Mailer` (net/smtp + log drivers) | `mail.FromEnv()`; `MAIL_*` |
+| `cache` | `Cache` (memory + Postgres) + `Remember` | build on demand |
+| `events` | Synchronous event bus, typed `Listen[T]` | share a `events.New()` |
+| `storage` | Blob store (disk driver; S3 = extension point) | `storage.FromEnv()`; `STORAGE_*` |
+
+`jobs` and `schedule` have runtime loops started in the server bootstrap behind
+their config flags; the rest are libraries a feature constructs from `deps`. See
+[`CLAUDE.md`](CLAUDE.md) §4 for usage snippets.
 
 ### Add a JS island (the pattern)
 

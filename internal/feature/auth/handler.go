@@ -28,6 +28,7 @@ import (
 	"github.com/example/app/internal/core/httpx"
 	"github.com/example/app/internal/core/validate"
 	"github.com/example/app/internal/feature/auth/store"
+	"github.com/example/app/internal/view/layout"
 )
 
 const (
@@ -168,7 +169,8 @@ func (m *Module) register(w http.ResponseWriter, r *http.Request) {
 
 func (m *Module) account(w http.ResponseWriter, r *http.Request) {
 	user, _ := CurrentUser(r.Context())
-	m.render(w, r, http.StatusOK, AccountPage(m.assets, user))
+	data := layout.ShellData{Title: "Account · App", Path: r.URL.Path, UserName: user.Email, DisplayName: "App"}
+	m.render(w, r, http.StatusOK, AccountPage(m.assets, user, data))
 }
 
 // RequireAuth wraps a handler so it runs only for an authenticated request: it

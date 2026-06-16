@@ -1,0 +1,9 @@
+package component
+
+// Badge renders a status/tag pill. variant: default/outline/muted/success/
+// warning/destructive/primary. size: default/sm.
+templ Badge(variant, size string) {
+	<span class={ badgeClasses(variant, size) }>
+		{ children... }
+	</span>
+}

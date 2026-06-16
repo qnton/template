@@ -1,0 +1,24 @@
+package component
+
+// Icon renders a lucide icon (24x24 stroke geometry) by name. class is applied to
+// the <svg> for sizing/colour, e.g. Icon("Search", "size-4 text-muted-foreground").
+// Sizing follows the parent unless a size class is given; many containers set
+// `[&_svg]:size-4`. Unknown names render an empty (harmless) <svg>. Icon geometry
+// lives in icons.go (paste more lucide shapes there to add names).
+templ Icon(name, class string) {
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="24"
+		height="24"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+		class={ "lucide " + class }
+	>
+		@templ.Raw(lucideIcons[name])
+	</svg>
+}

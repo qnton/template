@@ -2,21 +2,22 @@ package component
 
 // InputProps configures TextInput. Error, when set, renders a field-level message.
 type InputProps struct {
-	ID          string
-	Name        string
-	Label       string
-	Type        string
-	Value       string
-	Placeholder string
-	Error       string
-	Required    bool
-	MaxLength   int
+	ID           string
+	Name         string
+	Label        string
+	Type         string
+	Value        string
+	Placeholder  string
+	Error        string
+	Autocomplete string
+	Required     bool
+	MaxLength    int
 }
 
 templ TextInput(p InputProps) {
-	<div class="space-y-1">
+	<div class="space-y-1.5">
 		if p.Label != "" {
-			<label for={ p.ID } class="block text-sm font-medium">{ p.Label }</label>
+			@Label(p.ID, p.Label, p.Required)
 		}
 		<input
 			type={ orDefault(p.Type, "text") }
@@ -24,16 +25,22 @@ templ TextInput(p InputProps) {
 			name={ p.Name }
 			value={ p.Value }
 			placeholder={ p.Placeholder }
+			if p.Autocomplete != "" {
+				autocomplete={ p.Autocomplete }
+			}
 			if p.Required {
 				required
 			}
 			if p.MaxLength > 0 {
 				maxlength={ attrInt(p.MaxLength) }
 			}
+			if p.Error != "" {
+				aria-invalid="true"
+			}
 			class={ inputClasses }
 		/>
 		if p.Error != "" {
-			<p class="text-sm text-red-600 dark:text-red-400">{ p.Error }</p>
+			<p class="text-sm text-destructive">{ p.Error }</p>
 		}
 	</div>
 }

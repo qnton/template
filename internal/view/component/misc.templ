@@ -1,0 +1,76 @@
+package component
+
+// Skeleton is a shimmering loading placeholder. class sets its size/shape.
+templ Skeleton(class string) {
+	<div class={ "shimmer rounded-md bg-muted/60", class }></div>
+}
+
+// Kbd renders a compact keyboard hint (children are the key, e.g. ⌘ or K).
+templ Kbd() {
+	<kbd class="kbd">
+		{ children... }
+	</kbd>
+}
+
+// Label renders a form label. If required, a destructive asterisk is appended.
+templ Label(forID, text string, required bool) {
+	<label for={ forID } class={ labelClasses }>
+		{ text }
+		if required {
+			<span class="ml-0.5 text-destructive">*</span>
+		}
+	</label>
+}
+
+// Field wraps a labelled form control with optional description and error. The
+// control(s) render as children.
+templ Field(forID, label, description string, required bool, errMsg string) {
+	<div class="space-y-1.5">
+		if label != "" {
+			@Label(forID, label, required)
+		}
+		if description != "" {
+			<p class="text-xs text-muted-foreground">{ description }</p>
+		}
+		{ children... }
+		if errMsg != "" {
+			<p class="text-sm text-destructive">{ errMsg }</p>
+		}
+	</div>
+}
+
+// PageHeader is the standard page title block: title + optional description on
+// the left, action children on the right.
+templ PageHeader(title, description string) {
+	<header class="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+		<div class="min-w-0 space-y-1">
+			<h1 class="text-2xl font-semibold tracking-tight text-foreground">{ title }</h1>
+			if description != "" {
+				<p class="text-sm leading-relaxed text-muted-foreground">{ description }</p>
+			}
+		</div>
+		<div class="flex w-full shrink-0 flex-wrap items-center gap-2 empty:hidden sm:w-auto">
+			{ children... }
+		</div>
+	</header>
+}
+
+// Section is a labelled content group: uppercase micro title + optional
+// description, then children.
+templ Section(title, description string) {
+	<section class="space-y-3">
+		if title != "" || description != "" {
+			<div class="flex items-end justify-between gap-4">
+				<div class="min-w-0 space-y-0.5">
+					if title != "" {
+						<h2 class="text-micro font-semibold uppercase tracking-wide text-muted-foreground">{ title }</h2>
+					}
+					if description != "" {
+						<p class="text-sm leading-relaxed text-muted-foreground">{ description }</p>
+					}
+				</div>
+			</div>
+		}
+		{ children... }
+	</section>
+}

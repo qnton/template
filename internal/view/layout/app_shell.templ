@@ -1,0 +1,144 @@
+package layout
+
+import (
+	"github.com/example/app/internal/core/assets"
+	"github.com/example/app/internal/core/httpx"
+	coreview "github.com/example/app/internal/core/view"
+	"github.com/example/app/internal/view/component"
+)
+
+// AppShell is the authenticated application layout: a grouped sidebar (desktop),
+// a topbar with breadcrumbs, a scrollable mobile nav strip, and a content column.
+// It is the sibling of Base (the minimal shell for public/auth pages).
+//
+// Like the rest of internal/view it is project-owned scaffolding — edit the nav
+// (nav.go), brand, and chrome freely. Mobile nav is intentionally a simple,
+// JS-free strip; swap in a drawer island if you need one. The <head> is delegated
+// to the template-owned @coreview.Head seam so CSP/asset wiring stays upgradeable.
+templ AppShell(a *assets.Manager, data ShellData) {
+	<!DOCTYPE html>
+	<html lang="en" class="h-full">
+		<head>
+			@coreview.Head(a, orDefaultShell(data.Title, "App"))
+		</head>
+		<body class="h-full antialiased">
+			<div class="flex h-dvh max-h-dvh w-full overflow-hidden">
+				@sidebar(data)
+				<main class="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+					@topbar(data)
+					@mobileNav(data)
+					<div class="mx-auto flex min-w-0 w-full max-w-6xl flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">
+						{ children... }
+					</div>
+				</main>
+			</div>
+		</body>
+	</html>
+}
+
+templ sidebar(data ShellData) {
+	<aside class="hidden min-h-0 w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+		<div class="scrollbar-thin flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+			<div class="border-b border-sidebar-border/70 px-1.5 pb-3 pt-0.5">
+				<a href="/" class="flex min-w-0 items-center gap-2 text-base font-semibold tracking-tight">
+					@component.Icon("LayoutGrid", "size-5 shrink-0 text-sidebar-primary")
+					<span class="truncate">{ orDefaultShell(data.DisplayName, "App") }</span>
+				</a>
+			</div>
+			for _, group := range NavGroups() {
+				<div class="flex flex-col gap-0.5">
+					<p class="px-2 pb-1 text-nano font-medium uppercase tracking-wider text-muted-foreground">{ group.Label }</p>
+					for _, item := range group.Items {
+						@navLink(item, data.Active(item.Href))
+					}
+				</div>
+			}
+		</div>
+		<div class="mt-auto space-y-2 border-t border-sidebar-border px-4 py-3">
+			if data.UserName != "" {
+				<p class="truncate px-1 text-xs text-muted-foreground" title={ data.UserName }>{ data.UserName }</p>
+			}
+			<div class="flex items-center gap-2">
+				@component.ThemeToggle()
+				<form method="post" action="/logout" class="flex-1">
+					<input type="hidden" name="csrf_token" value={ httpx.CSRFToken(ctx) }/>
+					<button type="submit" class={ component.ButtonClass("outline", "sm") + " w-full" }>
+						@component.Icon("LogOut", "")
+						Sign out
+					</button>
+				</form>
+			</div>
+		</div>
+	</aside>
+}
+
+templ navLink(item NavItem, active bool) {
+	<a href={ templ.SafeURL(item.Href) } class={ navLinkClass(active) }>
+		@component.Icon(item.Icon, navIconClass(active))
+		<span class="truncate">{ item.Label }</span>
+	</a>
+}
+
+templ topbar(data ShellData) {
+	<header class="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-border bg-background/85 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:px-4">
+		<a href="/" class="min-w-0 truncate font-semibold tracking-tight md:hidden">{ orDefaultShell(data.DisplayName, "App") }</a>
+		@breadcrumbs(data)
+		<div class="ml-auto flex items-center gap-1.5 md:hidden">
+			@component.ThemeToggle()
+		</div>
+	</header>
+}
+
+// mobileNav is a horizontal, JS-free nav strip shown only below md.
+templ mobileNav(data ShellData) {
+	<nav aria-label="Primary" class="flex gap-1 overflow-x-auto border-b border-border bg-background px-3 py-2 md:hidden">
+		for _, group := range NavGroups() {
+			for _, item := range group.Items {
+				<a href={ templ.SafeURL(item.Href) } class={ mobileNavClass(data.Active(item.Href)) }>
+					@component.Icon(item.Icon, "size-4 shrink-0")
+					<span class="truncate">{ item.Label }</span>
+				</a>
+			}
+		}
+	</nav>
+}
+
+templ breadcrumbs(data ShellData) {
+	if crumbs := Crumbs(data.Path); len(crumbs) > 0 {
+		<nav aria-label="Breadcrumb" class="hidden min-w-0 items-center gap-1 text-sm text-muted-foreground md:flex">
+			for i, c := range crumbs {
+				if i > 0 {
+					@component.Icon("ChevronRight", "size-3.5 shrink-0 text-muted-foreground/60")
+				}
+				if c.Last {
+					<span class="truncate font-medium text-foreground">{ c.Label }</span>
+				} else {
+					<a href={ templ.SafeURL(c.Href) } class="truncate transition-colors hover:text-foreground">{ c.Label }</a>
+				}
+			}
+		</nav>
+	}
+}
+
+func navLinkClass(active bool) string {
+	const base = "group relative flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors "
+	if active {
+		return base + "bg-sidebar-accent font-medium text-sidebar-accent-foreground before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-primary before:content-['']"
+	}
+	return base + "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+}
+
+func navIconClass(active bool) string {
+	if active {
+		return "size-4 shrink-0 text-sidebar-primary"
+	}
+	return "size-4 shrink-0 text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground"
+}
+
+func mobileNavClass(active bool) string {
+	const base = "inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors "
+	if active {
+		return base + "bg-accent font-medium text-accent-foreground"
+	}
+	return base + "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+}

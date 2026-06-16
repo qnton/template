@@ -6,12 +6,32 @@ package store
 
 import (
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type Cache struct {
+	Key       string
+	Value     []byte
+	ExpiresAt pgtype.Timestamptz
+}
 
 type Item struct {
 	ID        int64
 	Title     string
 	CreatedAt time.Time
+}
+
+type Job struct {
+	ID          int64
+	Kind        string
+	Payload     []byte
+	Attempts    int32
+	MaxAttempts int32
+	RunAt       time.Time
+	LockedAt    pgtype.Timestamptz
+	LastError   pgtype.Text
+	CreatedAt   time.Time
 }
 
 type Session struct {

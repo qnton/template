@@ -1,17 +1,24 @@
 package component
 
-// ButtonProps configures Button. Variant is "primary" (default), "secondary" or
-// "danger"; Class appends extra utility classes; Type defaults to "button"; Attrs
-// passes through arbitrary attributes (e.g. hx-* for HTMX actions).
+// ButtonProps configures Button. Variant is one of default/secondary/outline/
+// ghost/destructive/success/link ("primary" and "danger" remain as aliases);
+// Size is default/xs/sm/lg/xl/icon/iconSm. Icon (optional) renders a leading
+// lucide icon. Class appends extra utility classes; Type defaults to "button";
+// Attrs passes through arbitrary attributes (e.g. hx-* for HTMX actions).
 type ButtonProps struct {
 	Type    string
 	Variant string
+	Size    string
+	Icon    string
 	Class   string
 	Attrs   templ.Attributes
 }
 
 templ Button(p ButtonProps) {
-	<button type={ orDefault(p.Type, "button") } class={ buttonClasses(p.Variant), p.Class } { p.Attrs... }>
+	<button type={ orDefault(p.Type, "button") } class={ buttonClasses(p.Variant, p.Size), p.Class } { p.Attrs... }>
+		if p.Icon != "" {
+			@Icon(p.Icon, "")
+		}
 		{ children... }
 	</button>
 }

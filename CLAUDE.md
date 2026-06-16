@@ -30,7 +30,7 @@ Base version is in `TEMPLATE_VERSION`.
 ## 3. Architecture & ownership boundary
 
 **Core vs features.** `internal/core/` is the stable bootstrap (server, middleware
-chain, config, DB pool, asset/island loader, CSRF, layout shell). Features are
+chain, config, DB pool, asset/island loader, CSRF, the head/CSP seam). Features are
 self-contained slices that depend only on the small **`app.Deps`** struct
 (`Logger`, `Pool`, `Config`, `CSRF`, `Assets`) and register routes via the
 **`app.Feature`** interface. Core never imports concrete features;
@@ -40,16 +40,20 @@ self-contained slices that depend only on the small **`app.Deps`** struct
 
 | Template-owned (DO NOT edit — overwritten on update) | Project-owned (yours — never touched by updates) |
 |---|---|
-| `internal/core/` | `internal/feature/` |
-| `internal/view/layout/`, `internal/view/component/` (base) | `migrations/` |
-| `embed.go`, `sqlc.yaml` | `static/js/islands/` (your islands) |
-| `Makefile`, `Dockerfile`, `docker-compose.yml`, `.air.toml` | `static/css/input.css` (your `@theme`) |
-| `.github/`, `.dockerignore` | `.env`, `TEMPLATE_VERSION` value |
-| `static/js/core.mjs`, `static/js/htmx.min.js`, `static/js/vendor/` | the go.mod module path, `README.md` |
+| `internal/core/` (incl. the `internal/core/view/` head/CSP seam) | `internal/feature/` |
+| `embed.go`, `sqlc.yaml` | `internal/view/` (layout + components — scaffolded once, then yours) |
+| `Makefile`, `Dockerfile`, `docker-compose.yml`, `.air.toml` | `migrations/` · `static/js/islands/` (your islands) |
+| `.github/`, `.dockerignore` | `static/css/input.css` (your `@theme`) |
+| `static/js/core.mjs`, `static/js/htmx.min.js`, `static/js/vendor/` | `.env`, `TEMPLATE_VERSION` value · the go.mod module path, `README.md` |
 
 Rule: **extend by adding files (features, islands, migrations), never by editing
-Core files.** Adding files under template-owned dirs (e.g. a new shared component)
-is fine — updates overwrite base files but leave your additions.
+Core files.** Adding files under template-owned dirs is fine — updates overwrite
+base files but leave your additions. The **view layer (`internal/view/`) is
+project-owned scaffolding**: the template writes it once and never overwrites it,
+so customize components and layout (and design tokens in `static/css/input.css`)
+freely. Only the small head/CSP seam under `internal/core/view/` (nonce'd import
+map, CSRF meta, vendored-script SRI) stays template-owned and upgradeable —
+`layout.Base` renders it with `@coreview.Head(a, title)`.
 
 **Strict feature anatomy (`make structure` enforces this):**
 - `handler.go` — package name matches the feature directory; defines
@@ -64,6 +68,11 @@ is fine — updates overwrite base files but leave your additions.
 ## 4. Recipes
 
 **Add a feature** (`internal/feature/<name>/`):
+
+Fast path: **`make new-feature NAME=<name>`** scaffolds the whole slice
+(handler + view + test, wired into the registry) so it passes `make structure`
+immediately; add `DB=1` to also emit `queries.sql` + a migration + the `sqlc.yaml`
+block (then `make sqlc` materialises `store/`). Doing it by hand, the anatomy is:
 1. `handler.go` — `type Module struct{…}`, `func New(deps app.Deps) *Module`, `func (m *Module) Routes(mux *http.ServeMux)`.
 2. `view.templ` — components rendered by the handlers.
 3. `handler_test.go` — handler tests using a fake store where possible.
@@ -82,7 +91,43 @@ is fine — updates overwrite base files but leave your additions.
 2. `make migrate`.
 3. Add the query to the feature's `queries.sql` → `make sqlc` → use via the feature's `store.Querier`.
 
-**Reusable UI:** add a templ component in `internal/view/component/`.
+**Background jobs** (`internal/core/jobs`, optional — set `JOBS_ENABLED=true`):
+enqueue from a handler with `jobs.New(deps.Pool).Enqueue(ctx, "kind", payload)`;
+register the handler in `internal/feature/registry` `RegisterJobs`. The worker
+(Postgres `FOR UPDATE SKIP LOCKED`, retry/backoff) starts in the server bootstrap.
+
+**Scheduled tasks** (`internal/core/schedule`, optional — set `SCHEDULER_ENABLED=true`):
+register recurring work in `registry.RegisterSchedule` with
+`s.Every("name", interval, fn)`. In-process per replica — guard once-only tasks
+with a Postgres advisory lock.
+
+**Mail** (`internal/core/mail`): build a mailer on demand with
+`m, _ := mail.FromEnv(deps.Logger)`, then `m.Send(ctx, mail.Message{…})`. Driver +
+credentials come from `MAIL_*` env (`MAIL_DRIVER=log` default; `smtp` for real
+sending). No central config field, no bootstrap wiring.
+
+**Cache** (`internal/core/cache`): `cache.NewMemory()` (process-local, TTL) or
+`cache.NewPostgres(deps.Pool)` (shared, `cache` table). Both satisfy `cache.Cache`
+(`Get`/`Set`/`Delete`); `cache.Remember(ctx, c, key, ttl, fn)` for compute-and-store.
+
+**Events** (`internal/core/events`): a shared `events.New()` bus; `events.Listen[T]`
+for typed listeners, `bus.Emit(ctx, "name", payload)` to dispatch (synchronous).
+Hold one bus where features can reach it (e.g. constructed in `registry`). For
+async, have a listener enqueue a job.
+
+**Storage** (`internal/core/storage`): `s, _ := storage.FromEnv()` (or
+`storage.NewDisk(root)`), then `Put`/`Get`/`Delete`/`Exists`. Keys are sanitised
+(no path traversal). Add an S3 driver by implementing `storage.Storage`.
+
+**Reusable UI:** `internal/view/component/` ships a token-based starter design
+system (`Button`, `Alert`/`AlertBox`, `Badge`, `Card`, `CardLink`, `Stat`,
+`EmptyState`, `Icon` + lucide set, and `Label`/`Field`/`PageHeader`/`Section`/
+`Kbd`/`Skeleton`). Compose these or add your own templ component here. Two layouts
+exist: `layout.Base` (minimal, for public/auth pages) and `layout.AppShell`
+(sidebar + topbar for authenticated areas; edit the nav in `layout/nav.go`).
+**Re-theme by editing the oklch tokens in `static/css/input.css`** (`:root`/`.dark`)
+— components reference semantic tokens (`bg-primary`, `text-muted-foreground`,
+`border-border`, …), never raw colours, so one file restyles everything.
 
 ## 5. Conventions
 
@@ -108,6 +153,9 @@ is fine — updates overwrite base files but leave your additions.
 | `make generate` | Run sqlc + templ + tailwind |
 | `make sqlc` / `make templ` / `make tailwind` | Individual generators |
 | `make build` | Generate + build the hardened static binary |
+| `make new-feature NAME=x [DB=1]` | Scaffold a feature slice (+ optional DB store) |
+| `make new-migration NAME=x` | Scaffold an auto-numbered goose migration |
+| `make new-island NAME=x` / `make new-component NAME=x` | Scaffold a JS island / view component |
 | `make structure` | Validate strict app/feature structure |
 | `make migrate` / `make migrate-down` | Apply / roll back migrations (goose) |
 | `make test` | `go test ./... -race` |
